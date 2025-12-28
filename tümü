@@ -1,0 +1,1013 @@
+# Korona Salgını Başlangıç Senaryosu_ Acil durum soyut sınıfından türeyen ekipler uyarı_al methodunu override etmektedir. ABC sınıfın abstract olmasını saglar. Zorunlu yapar.
+from abc import ABC, abstractmethod
+#İnsanaların 112yi arayarak acil durumları var ise hastaneye ulaşmak
+print("------------------112 ACİL DURUM SİSTEMİ-------------------")
+
+# Ambulansa gelen çağrı sayısı
+cagri_sayisi = int(input("Ambulansa kaç çağrı geldi?: "))
+
+# ---------------- ABSTRACT BASE CLASS ----------------
+class AcilDurumBirim(ABC): #abstract+ovaride 
+    def __init__(self, birim_id):
+        self.birim_id = birim_id
+
+    @abstractmethod
+    def uyarı_al(self, mesaj):
+        pass
+
+# ---------------- EKİPLER ----------------
+class AmbulansEkibi(AcilDurumBirim):#inheritance Alt sınıflar (AmbulansEkibi, HastaTespitEkibi, HastaSevkEkibi) base class AcilDurumBirim’i miras alıyor.
+    def uyarı_al(self, mesaj):
+        print(f"[{self.birim_id}] {mesaj}")
+
+#polimorfizm
+class HastaTespitEkibi(AcilDurumBirim):
+    def uyarı_al(self, mesaj):
+        print(f"[{self.birim_id}] {mesaj}")
+
+    def hasta_tespit_et(self, kisi):
+        print(f"\n{kisi['isim']} için değerlendirme yapılıyor...")
+
+        if (
+            kisi["ates"] >= 38
+            and kisi["oksuruk"]
+            and kisi["nefes"]
+            and kisi["agri"]
+        ):
+            print(f" {kisi['isim']} ACİL HASTA!")
+            return True
+        else:
+            print(f"{kisi['isim']} için acil durum yok.")
+            return False
+
+class HastaSevkEkibi(AcilDurumBirim):
+    toplam_hasta = 0
+
+    def uyarı_al(self, mesaj):
+        print(f"[{self.birim_id}] {mesaj}")
+
+    def hasta_al_ve_gotur(self, kisi):
+        HastaSevkEkibi.toplam_hasta += 1
+        print(f" {kisi['isim']} ambulansla hastaneye götürülüyor...")
+
+    @classmethod
+    def toplam_vaka_goster(cls):
+        print("\n===== GÜN SONU RAPORU =====")
+        print("Toplam ambulansla sevk edilen hasta:", cls.toplam_hasta)
+
+
+# ---------------- NESNELER ----------------
+tespit_ekibi = HastaTespitEkibi("Hasta Tespit Ekibi")
+ambulans = AmbulansEkibi("Ambulans Ekibi")
+sevk_ekibi = HastaSevkEkibi("Hasta Sevk Ekibi")
+
+
+# ---------------- ÇAĞRILAR ----------------
+for i in range(1, cagri_sayisi + 1):
+    print(f"\n--- {i}. ACİL ÇAĞRI ---")
+
+    isim = input("Hastanın adı: ")
+    ates = float(input("Ateş değeri: "))
+
+    oksuruk = input("Öksürük var mı? (evet/hayır): ").lower() == "evet"
+    nefes = input("Nefeste daralma var mı? (evet/hayır): ").lower() == "evet"
+    agri = input("Eklem / kemik ağrısı var mı? (evet/hayır): ").lower() == "evet"
+
+    kisi = {
+        "isim": isim,
+        "ates": ates,
+        "oksuruk": oksuruk,
+        "nefes": nefes,
+        "agri": agri
+    }
+
+    hasta_mi = tespit_ekibi.hasta_tespit_et(kisi)
+
+    if hasta_mi:
+        ambulans.uyarı_al("Acil vaka tespit edildi")
+        sevk_ekibi.hasta_al_ve_gotur(kisi)
+    else:
+        print(f"{isim} evde izleme önerildi.")
+
+# ---------------- RAPOR ----------------
+HastaSevkEkibi.toplam_vaka_goster()
+print("Vaka sayısı artıyor. Virüs bulaşıyor")
+#-------------------------------------------------------------------------------------------------------------------------
+#En yakın hastaneye ulaşmak
+import random
+import math
+
+class Hastane:
+    def __init__(self, ad, konum):
+        self.ad = ad
+        self.konum = konum
+        self.doluluk_orani = random.randint(50, 100)
+        self.yogun_bakim_doluluk = random.randint(50, 100)
+
+    def musait_mi(self):
+        return self.doluluk_orani < 90 and self.yogun_bakim_doluluk < 90
+
+class HastaSevkEkibi(AcilDurumBirim):
+    toplam_hasta_sayisi = 0
+
+    def uyarı_al(self, uyari_mesaji):
+        print(f"[{self.birim_id}] Bilgilendirildi: {uyari_mesaji}")
+
+    def mesafe_hesapla(self, konum1, konum2):
+        return math.sqrt((konum1[0] - konum2[0])**2 + (konum1[1] - konum2[1])**2)
+
+    def en_yakin_hastane_bul(self, hasta_konum, hastaneler):
+        uygun_hastaneler = []
+
+        for hastane in hastaneler:
+            if hastane.musait_mi():
+                mesafe = self.mesafe_hesapla(hasta_konum, hastane.konum)
+                uygun_hastaneler.append((mesafe, hastane))
+
+        if not uygun_hastaneler:
+            return None
+
+        uygun_hastaneler.sort(key=lambda x: x[0])
+        return uygun_hastaneler[0][1]
+
+    def hasta_al_ve_hastaneye_gotur(self, vatandas, hastaneler):
+        HastaSevkEkibi.toplam_hasta_sayisi += 1
+
+        print(f"\n {vatandas['isim']} alindi.")
+        hastane = self.en_yakin_hastane_bul(vatandas["konum"], hastaneler)
+
+        if hastane:
+            print(f" En yakin uygun hastane: {hastane.ad}")
+            print(f" Güzergah: {vatandas['konum']} ➜ {hastane.konum}")
+            print(f" Hastane doluluk: %{hastane.doluluk_orani}")
+            print(f" Yogun bakim doluluk: %{hastane.yogun_bakim_doluluk}")
+        else:
+            print(" Musait hastane bulunamadi!")
+
+hastaneler = [
+    Hastane("Merkez Devlet Hastanesi", (10, 5)),
+    Hastane("Sehir Hastanesi", (25, 30)),
+    Hastane("Universite Hastanesi", (5, 20))
+]
+# --------------------------------------------------------------------------
+#Kapasite artırımı,personelde artış
+import random
+
+class Hastane:
+    def __init__(self, ad, konum):
+        self.ad = ad
+        self.konum = konum
+
+        self.kapasite = 2000
+        self.yogun_bakim_kapasite = 200
+
+        self.doluluk_orani = 0
+        self.yogun_bakim_doluluk = 0
+
+        self.personel_sayisi = 50
+
+        # Mesaj bayrakları (spam önler)
+        self.genel_mesaj_gosterildi = False
+        self.yb_mesaj_gosterildi = False
+
+    def musait_mi(self):
+        return True
+
+    def hasta_ekle(self, yb=False):
+        if yb:
+            self.yogun_bakim_doluluk += 1
+
+            if self.yogun_bakim_doluluk > self.yogun_bakim_kapasite:
+                self.yogun_bakim_kapasite += 50
+                self.personel_sayisi += 10   
+
+                if not self.yb_mesaj_gosterildi:
+                    print(
+                        f"{self.ad} yoğun bakım genişletildi | "
+                        f"Yeni YB kapasite: {self.yogun_bakim_kapasite} | "
+                        f"Personel: {self.personel_sayisi}"
+                    )
+                    self.yb_mesaj_gosterildi = True
+
+        else:
+            self.doluluk_orani += 1
+
+            if self.doluluk_orani > self.kapasite:
+                self.kapasite += 500
+                self.personel_sayisi += 20   
+
+                if not self.genel_mesaj_gosterildi:
+                    print(
+                        f"{self.ad} genel kapasite artırıldı | "
+                        f"Yeni kapasite: {self.kapasite} | "
+                        f"Personel: {self.personel_sayisi}"
+                    )
+                    self.genel_mesaj_gosterildi = True
+
+# Hastaneler
+hastaneler = [
+    Hastane("Merkez Hastanesi", (10,5)),
+    Hastane("Sehir Hastanesi", (25,30)),
+    Hastane("Universite Hastanesi", (5,20)),
+    Hastane("Saglik Ocagi Hastanesi", (15,10))
+]
+
+# Simülasyon
+for _ in range(10000):
+    hastane = random.choice(hastaneler)
+    yb = random.random() < 0.2
+    hastane.hasta_ekle(yb)
+
+print("\n-------------------------------KONSERLER İPTAL EDİLDİ ----------------------------------")
+
+# Konum bazlı risk kontrolü
+class KonumRisk:
+    def __init__(self, isim, konum):
+        self.isim = isim
+        self.__konum = konum  # kapsülleme
+        self.risk_skor = 0
+
+    def risk_hesapla(self, kalabalik_bolge):
+        if kalabalik_bolge:
+            self.risk_skor = 5  
+        else:
+            self.risk_skor = 2  
+
+    def risk_uyarisi(self):
+        if self.risk_skor >= 5:
+            print(f"{self.isim}  yüksek riskli bölgede! Konser iptal.")
+        else:
+            print(f"{self.isim} düşük riskli bölgede, dikkat et.")
+
+    def konum_goster(self):  # kapsülleme örneği
+        return self.__konum
+
+# STATIC ve CLASS method örneği
+class KonserSistemi:
+    toplam_kisi = 0  # class attribute
+
+    @classmethod
+    def kisi_ekle(cls, sayi):
+        cls.toplam_kisi += sayi
+
+    @staticmethod
+    def konser_uyarisi():
+        print(" Konserler iptal edildi, kalabalıktan uzak durun!")
+
+# Kullanım
+KonserSistemi.konser_uyarisi()
+
+kisiler = [
+    KonumRisk("Ali", (5,5)),
+    KonumRisk("Ayşe", (10,12))
+]
+
+for kisi in kisiler:
+    # Rastgele kalabalık belirle
+    kalabalik = random.choice([True, False])
+    kisi.risk_hesapla(kalabalik)
+    kisi.risk_uyarisi()
+    KonserSistemi.kisi_ekle(1)
+
+print(f"Toplam riskli kişi sayısı: {KonserSistemi.toplam_kisi}")
+
+# --------------------------------------------------------------------------VATANDAŞ -------------------------------------------------------------------------------------------
+#Aşıda tercihiniz nedir? Bğısıklığa etkisi, aşı için sıra alınması
+import random
+class Vatandas:
+    def __init__(self, isim, yas):
+        self.isim = isim
+        self.yas = yas
+        self.asi_istek = False
+        self.asi_tercih = None
+        self.asi_sira_aldi = False
+        self.asi_oldu = False
+        self.bagisiklik_orani = 0.0
+
+    def asi_tercihini_sec(self, tercih):
+        self.asi_istek = True
+        self.asi_tercih = tercih
+
+    def asi_sira_al(self):
+        if self.asi_istek and not self.asi_sira_aldi:
+            self.asi_sira_aldi = True
+            print(f"{self.isim} hastaneden {self.asi_tercih} aşısı için sıra aldı.")
+
+    def asi_ol(self, asi_turleri):
+        if self.asi_sira_aldi and not self.asi_oldu:
+            self.asi_oldu = True
+            # Başlangıç bağışıklık oranı, aşı türüne göre
+            self.bagisiklik_orani = asi_turleri[self.asi_tercih]
+            print(f"{self.isim} {self.asi_tercih} aşısı oldu. Bağışıklık: {self.bagisiklik_orani*100:.1f}%")
+
+    def bagisiklik_artir(self):
+        if self.asi_oldu and self.bagisiklik_orani < 0.95:
+            artisim = random.uniform(0.01, 0.05)  # her gün %1-5 artış
+            self.bagisiklik_orani = min(self.bagisiklik_orani + artisim, 0.95)
+            print(f"{self.isim} bağışıklığı güncellendi: {self.bagisiklik_orani*100:.1f}%")
+
+# ------------------ HASTANE ------------------
+class Hastane:
+    def __init__(self, ad, kapasite):
+        self.ad = ad
+        self.kapasite = kapasite
+        self.gunluk_doluluk = 0
+
+    def musait_mi(self):
+        return self.gunluk_doluluk < self.kapasite
+
+    def asi_yap(self, vatandas, asi_turleri):
+        if self.musait_mi():
+            vatandas.asi_ol(asi_turleri)
+            self.gunluk_doluluk += 1
+            return True
+        return False
+
+    def gunluk_sifirla(self):
+        self.gunluk_doluluk = 0
+
+# ------------------ AŞI TÜRLERİ ------------------
+asi_turleri = {
+    "biontech": 0.75,
+    "sinovac": 0.50,
+    "moderna": 0.70,
+    "astrazeneca": 0.65
+}
+
+# ------------------ GÜNLÜK RAPOR ------------------
+def gunluk_rapor(gun, vatandaslar):
+    print(f"\n--- Gün {gun} Raporu ---")
+    rapor_var = False
+    for v in vatandaslar:
+        if v.asi_oldu:
+            rapor_var = True
+            print(f"{v.isim} - Tercih: {v.asi_tercih}, Bağışıklık: {v.bagisiklik_orani*100:.1f}%")
+    if not rapor_var:
+        print("Bugün aşılanan veya bağışıklığı artan kişi yok.")
+    print("Durum: Bağışıklık oranı genel olarak artıyor.")
+
+# ------------------ SIMÜLASYON ------------------
+def simule_et(vatandaslar, hastane, gun_sayisi=7):
+    for gun in range(1, gun_sayisi+1):
+        print(f"\n=== Gün {gun} ===")
+        hastane.gunluk_sifirla()
+        for v in vatandaslar:
+            v.asi_sira_al()
+            if v.asi_sira_aldi and not v.asi_oldu:
+                hastane.asi_yap(v, asi_turleri)
+            v.bagisiklik_artir()
+        gunluk_rapor(gun, vatandaslar)
+
+# ------------------ KULLANICI GİRDİSİ ------------------
+vatandaslar = []
+kisi_sayisi = int(input("Kaç kişi için aşı sıra oluşturmak istiyorsunuz? "))
+
+for i in range(kisi_sayisi):
+    isim = input(f"{i+1}. kişinin ismi: ")
+    yas = int(input(f"{isim} için yaş giriniz: "))
+    v = Vatandas(isim, yas)
+    print(f"{isim} için aşı seçenekleri: {list(asi_turleri.keys())}")
+    tercih = input("Seçmek istediğiniz aşı: ").lower()
+    while tercih not in asi_turleri:
+        print("Hatalı seçim! Tekrar girin.")
+        tercih = input("Seçmek istediğiniz aşı: ").lower()
+    v.asi_tercihini_sec(tercih)
+    vatandaslar.append(v)
+
+hastane = Hastane("Merkez Hastane", kapasite=10)
+
+simule_et(vatandaslar, hastane, gun_sayisi=7)
+
+#-------------------------------------------KARANTİNA*******************************************
+
+import random
+
+# ------------------ VATANDAŞ ------------------
+class Vatandas:
+    def __init__(self, isim, yas):
+        self.isim = isim
+        self.yas = yas
+        self.durum = "saglikli"  # saglikli, hasta, iyilesmis, olum
+        self.asi_oldu = False
+        self.asi_basarili = False
+        self.bagisiklik_orani = 0.0
+        self.defnedildi = False
+
+    def asi_uygula(self, asi_turleri):
+        if not self.asi_oldu:
+            self.asi_oldu = True
+            self.asi_basarili = random.random() < random.choice(list(asi_turleri.values()))
+            self.bagisiklik_orani = random.uniform(0.2, 0.5)
+
+    def durum_guncelle(self):
+        if self.durum == "saglikli":
+            hasta_olma = random.random() < 0.2
+            if self.asi_basarili:
+                hasta_olma *= (1 - self.bagisiklik_orani)
+            if hasta_olma:
+                self.durum = "hasta"
+        elif self.durum == "hasta":
+            olum = random.random() < 0.05
+            if olum:
+                self.durum = "olum"
+            else:
+                iyilesme = random.random() < 0.2
+                if iyilesme:
+                    self.durum = "iyilesmis"
+
+    def bagisiklik_artir(self):
+        if self.durum != "olum":
+            artma = random.uniform(0.01, 0.1)
+            self.bagisiklik_orani = min(self.bagisiklik_orani + artma, 0.95)
+
+# ------------------ BÖLGE ------------------
+class Bolge:
+    def __init__(self, isim, kisi_sayisi):
+        self.isim = isim
+        self.vatandaslar = [Vatandas(f"{isim}_Vatandas{i+1}", random.randint(18,80)) for i in range(kisi_sayisi)]
+        self.karantina = False
+
+    def karantinayi_guncelle(self):
+        hasta = sum(1 for v in self.vatandaslar if v.durum=="hasta")
+        olum = sum(1 for v in self.vatandaslar if v.durum=="olum")
+        self.karantina = (hasta + olum)/len(self.vatandaslar) > 0.1
+
+# ------------------ MEZARLIK ------------------
+class Mezarlik:
+    def __init__(self, ad):
+        self.ad = ad
+        self.defnedilenler = []
+
+    def defin_yap(self, vatandas):
+        if vatandas.durum == "olum" and not vatandas.defnedildi:
+            vatandas.defnedildi = True
+            self.defnedilenler.append(vatandas.isim)
+
+# ------------------ AŞI TÜRLERİ ------------------
+asi_turleri = {"BioNTech":0.95,"Sinovac":0.75,"Moderna":0.93,"AstraZeneca":0.85}
+
+# ------------------ ÖRNEK BÖLGELER ------------------
+dunya = [
+    Bolge("Muratpaşa/Antalya", 30),
+    Bolge("Kepez/Antalya", 25),
+    Bolge("Bornova/İzmir", 40),
+]
+
+mezarlik = Mezarlik("Merkez Mezarlığı")
+
+# ------------------ SIMÜLASYON ------------------
+for gun in range(1, 8):  # 7 gün
+    print(f"\n=== Gün {gun} ===")
+    for bolge in dunya:
+        for v in bolge.vatandaslar:
+            v.asi_uygula(asi_turleri)
+            v.bagisiklik_artir()
+            v.durum_guncelle()
+            if v.durum=="olum":
+                mezarlik.defin_yap(v)
+        bolge.karantinayi_guncelle()
+
+    # Günlük rapor
+    for bolge in dunya:
+        toplam = len(bolge.vatandaslar)
+        saglikli = sum(1 for v in bolge.vatandaslar if v.durum=="saglikli")
+        hasta = sum(1 for v in bolge.vatandaslar if v.durum=="hasta")
+        iyilesmis = sum(1 for v in bolge.vatandaslar if v.durum=="iyilesmis")
+        olum = sum(1 for v in bolge.vatandaslar if v.durum=="olum")
+        asi_olan = sum(1 for v in bolge.vatandaslar if v.asi_oldu)
+
+        # Toplamın doğru olduğundan emin olalım
+        toplam_hesapla = saglikli + hasta + iyilesmis + olum
+        assert toplam == toplam_hesapla, f"Toplam sayılar hatalı! {bolge.isim}"
+
+        print(f"\nBölge: {bolge.isim}")
+        print(f"Toplam kişi: {toplam}")
+        print(f"Sağlıklı: {saglikli}")
+        print(f"Hasta: {hasta}")
+        print(f"İyileşen: {iyilesmis}")
+        print(f"Ölü: {olum}")
+        print(f"Aşılanan: {asi_olan}")
+        print(f"Karantina: {'Evet' if bolge.karantina else 'Hayır'}")
+
+print(f"\nDefnedilenler ({len(mezarlik.defnedilenler)} kişi): {', '.join(mezarlik.defnedilenler)}")
+
+# ------------------ EKONOMİK DESTEK PAKETİ -------------------------------------------------------------------------------
+import random
+
+class EkonomiDestek:
+    def __init__(self):
+        self.raporlar = []
+
+    def vatandas_al(self):
+        print("\n--- Vatandaş Bilgileri ---")
+        isim = input("İsim: ")
+        gelir = int(input("Aylık gelir (TL): "))
+        kira = int(input("Aylık kira (TL): "))
+        fatura = int(input("Aylık fatura (TL): "))
+
+        return {
+            "isim": isim,
+            "gelir": gelir,
+            "kira": kira,
+            "fatura": fatura
+        }
+
+    def destek_degerlendir(self, v):
+        print("\n******************************")
+        print(f"{v['isim']} için değerlendirme yapılıyor")
+
+        # Gelir ve giderler
+        gelir = v["gelir"]
+        kira = v["kira"]
+        fatura = v["fatura"]
+
+        # Toplam gider
+        toplam_gider = kira + fatura
+
+        # İlk bakiye
+        ilk_bakiye = gelir - toplam_gider
+
+        print("\n--- GELİR / GİDER ---")
+        print(f"Gelir : {gelir} TL")
+        print(f"Kira  : {kira} TL")
+        print(f"Fatura: {fatura} TL")
+        print(f"Toplam gider: {toplam_gider} TL")
+        print(f"İlk bakiye  : {ilk_bakiye} TL")
+
+        # Devlet desteği kontrolü
+        if ilk_bakiye < 0:
+            print("\n Gelir giderleri karşılamıyor")
+            print("Devlet en az maliyetli desteği uyguluyor")
+            print(" Fatura devlet tarafından ödendi")
+
+            # Sadece faturayı düş
+            toplam_gider = toplam_gider - fatura
+
+        else:
+            print("\n Gelir yeterli, destek gerekmedi")
+
+        # Son bakiye
+        son_bakiye = gelir - toplam_gider
+
+        print("\n--- AY SONU ---")
+        print(f"Güncel gider: {toplam_gider} TL")
+        print(f"Son bakiye : {son_bakiye} TL")
+
+        # Rapor kaydı
+        self.raporlar.append({
+            "isim": v["isim"],
+            "gelir": gelir,
+            "gider": toplam_gider,
+            "kalan": son_bakiye
+        })
+
+    def rapor(self):
+        print("\n--------- GENEL RAPOR --------")
+        for r in self.raporlar:
+            print("----------------------")
+            print(f"İsim : {r['isim']}")
+            print(f"Gelir: {r['gelir']} TL")
+            print(f"Gider: {r['gider']} TL")
+            print(f"Kalan: {r['kalan']} TL")
+        print("----------------------")
+
+# --------- PROGRAMI ÇALIŞTIR ---------
+if __name__ == "__main__":
+    sistem = EkonomiDestek()
+    vatandas = sistem.vatandas_al()
+    sistem.destek_degerlendir(vatandas)
+    sistem.rapor()
+# ----------------------- VATANDAŞ -----------------------------------
+import random
+import time
+
+class Vatandas:
+    def __init__(self, isim):
+        self.isim = isim
+        self.disarida = False
+        self.sicaklik = 36.5
+        self.ihlal = False
+        self.ceza = 0
+
+    def disari_cik(self):
+        self.disarida = random.random() < 0.3  # %30 dışarı çıkar
+
+    def sicaklik_olc(self):
+        self.sicaklik = round(random.uniform(36.0, 39.5), 1)
+
+# ------------------- TERMAL SISTEM-----------------------------------
+class TermalSistem:
+    def sicaklik_kontrol(self, vatandas):
+        vatandas.sicaklik_olc()
+        if vatandas.sicaklik >= 38:
+            print(f" TERMAL: {vatandas.isim} ateşi yüksek ({vatandas.sicaklik}°C)")
+            return True
+        return False
+
+# --------------------------- KAMERA SISTEMI -------------------------------
+class Kamera:
+    def __init__(self, kamera_id):
+        self.kamera_id = kamera_id
+
+    def goruntu_al(self, vatandas):
+        if vatandas.disarida:
+            print(f" Kamera {self.kamera_id}: {vatandas.isim} dışarıda tespit edildi")
+            return True
+        return False
+
+# ------------------------ DRONE SİSTEMİ---------------------------------- 
+class Drone:
+    def __init__(self, drone_id):
+        self.drone_id = drone_id
+
+    def havadan_kontrol(self, vatandas):
+        if vatandas.disarida:
+            print(f" Drone {self.drone_id}: {vatandas.isim} sokakta görüldü")
+            return True
+        return False
+
+#--------------------- POLIS / DENETİM ----------------------------------------
+class DenetimEkibi:
+    def ceza_yaz(self, vatandas):
+        vatandas.ihlal = True
+        vatandas.ceza = random.randint(1500, 5000)
+        print(f" CEZA: {vatandas.isim} → {vatandas.ceza} TL")
+
+# -------------------------------- SISTEM YONETIMI --------------------------
+class PandemiGuvenlikSistemi:
+    def __init__(self):
+        self.termal = TermalSistem()
+        self.kameralar = [Kamera(1), Kamera(2)]
+        self.dronelar = [Drone(1)]
+        self.denetim = DenetimEkibi()
+        self.sokaga_cikma_yasagi = True
+
+    def kontrol_et(self, vatandaslar):
+        print("\n SOKAĞA ÇIKMA YASAĞI İLAN EDİLDİ\n")
+
+        for v in vatandaslar:
+            v.disari_cik()
+
+            if self.sokaga_cikma_yasagi and v.disarida:
+                kamera_gordu = any(k.goruntu_al(v) for k in self.kameralar)
+                drone_gordu = any(d.havadan_kontrol(v) for d in self.dronelar)
+
+                if kamera_gordu or drone_gordu:
+                    ates = self.termal.sicaklik_kontrol(v)
+
+                    # Ceza şartları
+                    if ates or True:
+                        self.denetim.ceza_yaz(v)
+            else:
+                print(f" {v.isim} evde")
+
+    def gunluk_rapor(self, vatandaslar):
+        print("\n GÜNLÜK DENETİM RAPORU")
+        print("-" * 50)
+        for v in vatandaslar:
+            if v.ihlal:
+                print(f"{v.isim}: CEZA {v.ceza} TL | Ateş: {v.sicaklik}")
+        print("-" * 50)
+
+isimler = [
+    "Ahmet","Ayşe","Mehmet","Elif","Cenk",
+    "Zeynep","Ali","Fatma","Hasan","Merve"
+]
+
+vatandaslar = [Vatandas(isim) for isim in isimler]
+sistem = PandemiGuvenlikSistemi()
+
+for gun in range(1, 4):  # 3 gün simülasyon
+    print(f"\n****************GÜN {gun}**********************\n")
+    sistem.kontrol_et(vatandaslar)
+    sistem.gunluk_rapor(vatandaslar)
+    time.sleep(1)
+# -----------------------------ÖZETLE RAPOR------------------------------
+import random
+isimler = [
+    "Ahmet","Ayşe","Mehmet","Elif","Cenk",
+    "Zeynep","Ali","Fatma","Hasan","Merve"
+]
+
+vatandaslar = [Vatandas(isim) for isim in isimler]
+
+# ----------------------------SİSTEM AKTİF-----------------------------
+sistem = PandemiGuvenlikSistemi()
+
+for gun in range(1, 4):  # 3 gün simülasyon
+    print(f"\n--------------- GÜN {gun} ----------------------\n")
+    sistem.kontrol_et(vatandaslar)
+    sistem.gunluk_rapor(vatandaslar)
+    time.sleep(1)
+#--------------------------------------------------------------------------
+# Mesaiye kalımacak mı?
+
+import random
+class AcilDurumBirim:
+    def __init__(self, isim, saglik_sorunu=False):
+        self.isim = isim
+        self.saglik_sorunu = saglik_sorunu
+        self.gorev_suresi = 0
+        self.fazla_mesai_ucreti = 0
+        self.aktif = True
+
+    def calisma_istegi_sor(self):
+        if not self.aktif:
+            return False
+        cevap = input(f"{self.isim} çalışmak istiyor mu? (e/h): ").lower()
+        if cevap != 'e':
+            if not self.saglik_sorunu:
+                self.aktif = False
+                print(f"{self.isim} işten çıkarıldı (çalışmak istemedi).")
+            return False
+        return True
+
+    def gorev_yap(self, saat):
+        raise NotImplementedError
+
+class SaglikEkibi(AcilDurumBirim):
+    def gorev_yap(self, saat):
+        if not self.aktif:
+            return 0
+        if self.calisma_istegi_sor():
+            self.gorev_suresi += saat
+            mesai = max(0, saat-8)*90
+            self.fazla_mesai_ucreti += mesai
+            print(f"{self.isim} sağlık ekibi görev yaptı, fazla mesai: {mesai} TL")
+            return mesai
+        return 0
+
+class GuvenlikEkibi(AcilDurumBirim):
+    def gorev_yap(self, saat):
+        if not self.aktif:
+            return 0
+        if self.calisma_istegi_sor():
+            self.gorev_suresi += saat
+            mesai = max(0, saat-8)*90
+            self.fazla_mesai_ucreti += mesai
+            print(f"{self.isim} güvenlik ekibi görev yaptı, fazla mesai: {mesai} TL")
+            return mesai
+        return 0
+
+def gunluk_istatistik(ekipler):
+    toplam_fazla_mesai = sum(e.fazla_mesai_ucreti for e in ekipler if e.aktif)
+    aktif_ekip = sum(1 for e in ekipler if e.aktif)
+    isten_cikan = sum(1 for e in ekipler if not e.aktif)
+    print("\n--- Günlük Fazla Mesai ve İş Durumu ---")
+    for e in ekipler:
+        durum = "Çalışıyor" if e.aktif else "İşten çıkarıldı"
+        print(f"{e.isim}: {durum}")
+    print(f"Aktif çalışan sayısı: {aktif_ekip}")
+    print(f"İşten çıkarılan sayısı: {isten_cikan}")
+    print(f"Toplam fazla mesai ödemesi: {toplam_fazla_mesai} TL\n")
+
+# Örnek Kullanım
+ekipler = [
+    SaglikEkibi("Dr. Ahmet"),
+    SaglikEkibi("Hemşire Ayşe"),
+    GuvenlikEkibi("Polis Cenk"),
+    GuvenlikEkibi("Asker Elif", saglik_sorunu=True)
+]
+
+# 1 günlük görev simülasyonu
+for e in ekipler:
+    e.gorev_yap(random.randint(8,12))
+
+gunluk_istatistik(ekipler)
+
+# --------------------------------PANDEMİ SONU SIMÜLASYONU -----------------------------------------------------
+import random
+class SonDurumRaporu:
+    def __init__(self):
+        self.bolgeler = []
+        self.vatandaslar = []
+        self.hastaneler = []
+
+    # Bölge ekle
+    def bolge_ekle(self, isim, toplam_kisi):
+        bolge = {
+            "isim": isim,
+            "toplam_kisi": toplam_kisi,
+            "hasta": 0,
+            "olu": 0,
+            "iyilesen": 0,
+            "asilanan": 0,
+            "asi_basarili": 0,
+            "karantina": False
+        }
+        self.bolgeler.append(bolge)
+        return bolge
+
+    # Vatandaş ekle
+    def vatandas_ekle(self, isim, yas, hasta=False, asi_oldu=False, asi_basarili=False):
+        vatandas = {
+            "isim": isim,
+            "yas": yas,
+            "hasta": hasta,
+            "olu": False,
+            "iyilesen": hasta,
+            "asi_oldu": asi_oldu,
+            "asi_basarili": asi_basarili
+        }
+        self.vatandaslar.append(vatandas)
+        return vatandas
+
+    # Hastane ekle
+    def hastane_ekle(self, isim, kapasite, yb_kapasite):
+        hastane = {
+            "isim": isim,
+            "kapasite": kapasite,
+            "yb_kapasite": yb_kapasite,
+            "doluluk": 0,
+            "yb_doluluk": 0
+        }
+        self.hastaneler.append(hastane)
+        return hastane
+
+    # Günlük rapor
+    def gunluk_istatistik(self):
+        print("\n PANDEMİ SONU DURUM RAPORU")
+        print("="*80)
+        for bolge in self.bolgeler:
+            print(f"\nBölge: {bolge['isim']}")
+            print(f"Toplam kişi: {bolge['toplam_kisi']}")
+            print(f"Hasta: {bolge['hasta']}")
+            print(f"Ölü: {bolge['olu']}")
+            print(f"İyileşen: {bolge['iyilesen']}")
+            print(f"Aşılanan: {bolge['asilanan']}")
+            print(f"Aşı başarılı: {bolge['asi_basarili']}")
+            print(f"Karantina: {'Hayır'} (kısıtlamalar kalktı)")
+        
+        print("\n AŞI İSTATİSTİĞİ (Tüm vatandaşlar)")
+        asi_olan = sum(1 for v in self.vatandaslar if v['asi_oldu'])
+        asi_basarili = sum(1 for v in self.vatandaslar if v['asi_basarili'])
+        print(f"Aşılanan toplam: {asi_olan}")
+        print(f"Aşı başarılı toplam: {asi_basarili}")
+        
+        print("\n HASTANE DOLULUK DURUMU")
+        for h in self.hastaneler:
+            print(f"{h['isim']}: Genel doluluk: {h['doluluk']}/{h['kapasite']}, "
+                  f"YB doluluk: {h['yb_doluluk']}/{h['yb_kapasite']}")
+        print("="*80)
+
+# ------------------------- ÖRNEK KULLANIM ------------------------------------------
+simulasyon = SonDurumRaporu()
+
+# 10 bölge ekleyelim
+bolge_listesi = [
+    "Muratpaşa/Antalya","Kepez/Antalya","Bornova/İzmir",
+    "Konak/İzmir","Kadıköy/İstanbul","Beşiktaş/İstanbul",
+    "Çankaya/Ankara","Altındağ/Ankara","Osmangazi/Bursa","Nilüfer/Bursa"
+]
+
+for isim in bolge_listesi:
+    toplam = random.randint(40, 60)
+    bolge = simulasyon.bolge_ekle(isim, toplam)
+    
+    # Bölge içi vatandaşlar
+    for i in range(toplam):
+        yas = random.randint(18, 80)
+        hasta = random.random() < 0.05  # Vakalar çok azaldı
+        olu = False  # Ölümler yok
+        iyilesen = True  # Hasta olanlar iyileşti
+        asi_oldu = True  # Herkes aşılandı
+        asi_basarili = True  # Aşılar başarılı
+        
+        simulasyon.vatandas_ekle(f"{isim}_V{i+1}", yas, hasta, asi_oldu, asi_basarili)
+        
+        # Bölge istatistiklerini güncelle
+        bolge['hasta'] += 1 if hasta else 0
+        bolge['olu'] += 1 if olu else 0
+        bolge['iyilesen'] += 1 if iyilesen else 0
+        bolge['asilanan'] += 1 if asi_oldu else 0
+        bolge['asi_basarili'] += 1 if asi_basarili else 0
+    
+    # Karantina artık kaldırıldı
+    bolge['karantina'] = False
+
+# Hastaneler ekleyelim ve boşaltalım
+hastane_listesi = [
+    ("Merkez Hastanesi", 2000, 200),
+    ("Sehir Hastanesi", 1500, 150),
+    ("Universite Hastanesi", 1800, 180),
+    ("Saglik Ocağı", 1000, 100)
+]
+
+for isim, kap, yb in hastane_listesi:
+    h = simulasyon.hastane_ekle(isim, kap, yb)
+    h['doluluk'] = random.randint(0, int(kap*0.05))  # Hastaneler neredeyse boş
+    h['yb_doluluk'] = random.randint(0, int(yb*0.05))
+
+# Günlük rapor
+simulasyon.gunluk_istatistik()
+
+# ****************** PANDEMİ BİTTİ - HAYAT NORMALE DÖNDÜ **********************
+#------------------------------------------RİSK-----------------------------------------------------------------
+
+import random
+
+class PandemiRisk:
+    def __init__(self, isim):
+        self.isim = isim
+        self.maske = False
+        self.mesafe = False
+        self.kalabalik = False
+        self.asi = False
+        self.risk_skor = 0
+
+    def bilgiler_al(self):
+        self.maske = input(f"{self.isim}, maske taktın mı? (evet/hayır): ").lower() == "evet"
+        self.mesafe = input(f"{self.isim}, sosyal mesafeye uyuyor musun? (evet/hayır): ").lower() == "evet"
+        self.kalabalik = input(f"{self.isim}, kalabalığa girdin mi? (evet/hayır): ").lower() == "evet"
+        self.asi = input(f"{self.isim}, aşı oldun mu? (evet/hayır): ").lower() == "evet"
+
+    def risk_hesapla(self):
+        self.risk_skor = 0
+        self.risk_skor += 0 if self.maske else 2
+        self.risk_skor += 0 if self.mesafe else 2
+        self.risk_skor += 2 if self.kalabalik else 0
+        self.risk_skor -= 1 if self.asi else 0
+        self.risk_skor = max(self.risk_skor, 0)
+
+    def risk_uyarisi(self):
+        if self.risk_skor >= 5:
+            durum = "YÜKSEK RİSK"
+            mesaj = " Çok yüksek risk! Maske tak, mesafe uygula, kalabalığa girme!"
+        elif self.risk_skor >= 3:
+            durum = "ORTA RİSK"
+            mesaj = " Orta risk var. Tedbirleri sıkı uygula."
+        else:
+            durum = "DÜŞÜK RİSK"
+            mesaj = " Düşük risk. Ama tedbiri bırakma."
+        print(f"\n{self.isim} → Risk skoru: {self.risk_skor} → {durum}")
+        print(mesaj)
+
+# -------------------- KULLANIM --------------------
+# Senin bilgilerini al
+kullanici = PandemiRisk("Sen")
+kullanici.bilgiler_al()
+kullanici.risk_hesapla()
+kullanici.risk_uyarisi()
+
+# Rastgele 5 kişi ile karşılaştırma
+print("\n--- Diğer kişiler ---")
+for i in range(5):
+    kisi = PandemiRisk(f"Kişi{i+1}")
+    kisi.maske = random.choice([True, False])
+    kisi.mesafe = random.choice([True, False])
+    kisi.kalabalik = random.choice([True, False])
+    kisi.asi = random.choice([True, False])
+    kisi.risk_hesapla()
+    print(f"{kisi.isim} → Tekrar pandemiye yakalanma riski(6 puan üzerinden) : {kisi.risk_skor}")
+
+
+# ********************** BANK SINIFI *************************
+class GunesEnerjiliBank:
+    def __init__(self, isim, kapasite):
+        self.isim = isim
+        self.kapasite = kapasite  # günlük maksimum enerji üretimi
+        self.enerji = 0
+
+    # STATIC method: tüm banklar için standart enerji katsayısı
+    @staticmethod #******************************************************************************************************************
+    def enerji_katsayisi():
+        return 0.85  # güneş ışığı verimlilik katsayısı
+
+    # polimorfizm ile enerji üretmek
+    def enerji_uret(self):
+        # enerji_katsayisi static method ile alınıyor
+        self.enerji = int(self.kapasite * GunesEnerjiliBank.enerji_katsayisi())
+
+    def durum_goster(self):
+        print(f" {self.isim} bankası {self.enerji} birim enerji üretti.")
+
+# ------------------------------------- SIMULASYON ------------------------------------
+class Simulasyon:
+    def __init__(self, vatandaslar, bolgeler, hastaneler, banklar):
+        self.vatandaslar = vatandaslar
+        self.bolgeler = bolgeler
+        self.hastaneler = hastaneler
+        self.banklar = banklar
+        self.dunya_enerji = 0
+
+    def pandemi_bitti(self):
+        print("\n PANDEMİ BİTTİ! Ancak dünya enerji krizinde...\n")
+        print(" Güneş enerjili bankalar şehri desteklemek için enerji üretmeye başlıyor...\n")
+        for b in self.banklar:
+            b.enerji_uret()
+            b.durum_goster()
+            self.dunya_enerji += b.enerji
+        print(f" Dünya genelinde üretilen toplam enerji: {self.dunya_enerji} birim")
+        print(" Vatandaşlar artık bankalardan enerji ile cihazlarını şarj edebiliyor!")
+
+# ----------------------------------- KULLANIM --------------------------------------------------
+bank1 = GunesEnerjiliBank("Bornova Meydan", 100)
+bank2 = GunesEnerjiliBank("Konak Sahil", 120)
+vatandaslar = ["Ali", "Ayşe", "Mehmet"]
+bolgeler = ["Bornova", "Konak"]
+hastaneler = ["Merkez Hastanesi", "Saglik Ocağı"]
+
+simulasyon = Simulasyon(vatandaslar, bolgeler, hastaneler, [bank1, bank2])
+simulasyon.pandemi_bitti()
+
+
